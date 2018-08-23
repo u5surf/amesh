@@ -29,6 +29,7 @@ var (
 	geo, mask bool
 	usepix    bool
 	daemon    bool
+	usepxl    bool
 )
 
 func onerror(err error) {
@@ -43,6 +44,7 @@ func init() {
 	flag.BoolVar(&geo, "g", true, "地形を描画")
 	flag.BoolVar(&mask, "b", true, "県境を描画")
 	flag.BoolVar(&usepix, "p", false, "iTermであってもピクセル画で表示")
+	flag.BoolVar(&usepxl, "x", false, "github.com/ichinaski/pxlを使う")
 	flag.BoolVar(&daemon, "d", false, "daemonモード起動")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "東京アメッシュをCLIに表示するコマンドです。\n利用可能なオプション:\n")
@@ -52,7 +54,6 @@ func init() {
 }
 
 func main() {
-
 	if daemon {
 		startDaemon()
 		return
@@ -66,7 +67,7 @@ func main() {
 	r := 2
 
 	switch {
-	case !usepix && os.Getenv("TERM_PROGRAM") == "iTerm.app":
+	case !usepix && os.Getenv("TERM_PROGRAM") == "iTerm.app" && os.Getenv("TERM") != "screen":
 		buf := bytes.NewBuffer(nil)
 		err = png.Encode(buf, merged)
 		onerror(err)
@@ -75,6 +76,8 @@ func main() {
 	case sixelSupported():
 		resized := resize.Thumbnail(uint(size.X/r), uint(size.Y/r), merged, resize.Bicubic)
 		sixel.NewEncoder(os.Stdout).Encode(resized)
+  case usepxl:
+		pxlNew(merged.SubImage(merged.Bounds()))
 	default:
 		gat.NewClient(gat.GetTerminal()).Set(gat.SimpleBorder{}).PrintImage(merged)
 	}
